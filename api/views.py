@@ -3,20 +3,29 @@ from api.models import Question
 from django.http import HttpResponse,StreamingHttpResponse,JsonResponse, request
 # Create your views here.
 def questionwithcategory(request,ctg):
-    try:
-        instances = Question.objects.filter(category=ctg)
-        data = {'questions': list(instances.values())}
-        return JsonResponse(data)
-    except:
-        return {}
+    if request.user.is_authenticated:
+        try:
+            instances = Question.objects.filter(category=ctg)
+            data = {'questions': list(instances.values())}
+            return JsonResponse(data)
+        except:
+            return {}
+    else:
+        return JsonResponse({'error': "User not authenticated"})
 
 def info_of_categories(request):
-    instances = Question.objects.values('category').distinct()
-    categories = [instance['category'] for instance in instances]
-    return JsonResponse({'categories': categories})
+    if request.user.is_authenticated:
+        try:
+            instances = Question.objects.values('category').distinct()
+            categories = [instance['category'] for instance in instances]
+            return JsonResponse({'categories': categories})
+        except:
+            return {}
+    else:
+        return JsonResponse({'error': "User not authenticated"})
 
 def submit_data(request):
-    if request.method == 'POST':
+    if request.user.is_authenticated & request.method == 'POST':
         try:
             form_data = dict(request.POST)
             question_data_map = {}
@@ -34,6 +43,8 @@ def submit_data(request):
             return JsonResponse({'total_carbon_count': total_carbon_count,"categories":categories})
         except Exception as e:
             return JsonResponse({'error': "Key Error"})
+    else:
+        return JsonResponse({'error': "User not authenticated"})
 
 
 
