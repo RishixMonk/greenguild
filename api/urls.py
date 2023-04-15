@@ -5,5 +5,7 @@ urlpatterns = [
     path('qtc/<ctg>', views.questionwithcategory),
     path('all/',views.info_of_categories),
     path('submit',views.submit_data),
+    path('isauth',views.isauth),
+    path('register_request',views.register_request),
 ]
 

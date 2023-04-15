@@ -8,4 +8,4 @@ class Question(models.Model):
 
 class Score(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    score = models.FloatField()
+    score = models.FloatField(default=0)

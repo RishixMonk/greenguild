@@ -2,6 +2,26 @@ from django.shortcuts import render
 from api.models import Question
 from django.http import HttpResponse,StreamingHttpResponse,JsonResponse, request
 # Create your views here.
+
+def isauth(request):
+    username = request.POST["username"]
+    password = request.POST["password"]
+    user = authenticate(request, username=username, password=password)
+    if user is not None:
+        login(request, user)
+        return JsonResponse({'status': "User authenticated"})
+    else:
+        return JsonResponse({'error': "User not authenticated"})
+
+def register_request(request):
+	if request.method == "POST":
+		form = NewUserForm(request.POST)
+		if form.is_valid():
+			user = form.save()
+			login(request, user)
+			return JsonResponse({'status': "Registration successful"})
+		return JsonResponse({'status':"Unsuccessful registration. Invalid information."})
+
 def questionwithcategory(request,ctg):
     if request.user.is_authenticated:
         try:
