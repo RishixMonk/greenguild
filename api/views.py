@@ -3,6 +3,7 @@ from api.models import Question
 from django.http import HttpResponse,StreamingHttpResponse,JsonResponse, request
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.models import User
+import math
 # Create your views here.
 
 def isauth(request):
@@ -66,7 +67,17 @@ def submit_data(request):
             for key, val in form_data.items():
                 categories[category_data_map[key]]+=question_data_map[key] * float(val[0])
                 total_carbon_count+= question_data_map[key] * float(val[0])
-            return JsonResponse({'total_carbon_count': total_carbon_count,"categories":categories})
+            total_score = int(total_carbon_count/10)
+            commute_score = int(categories['Commute']/10)
+            household_score = int(categories['Household']/10)
+            food_score = int(categories['Food']/10)
+            scores = {
+                "total_score": math.floor(total_score),
+                "commute_score": math.floor(commute_score),
+                "household_score": math.floor(household_score),
+                "food_score": math.floor(total_score) - (math.floor(commute_score) + math.floor(household_score))
+            }
+            return JsonResponse({'total_carbon_count': total_carbon_count,"categories":categories,"scores":scores})
         except Exception as e:
             return JsonResponse({'error': "Key Error"})
     else:
