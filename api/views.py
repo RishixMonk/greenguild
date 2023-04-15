@@ -1,19 +1,25 @@
 from django.shortcuts import render
-from api.models import Question
+from api.models import Question, Score
 from django.http import HttpResponse,StreamingHttpResponse,JsonResponse, request
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.models import User
 import math, json
+from django.core.exceptions import ObjectDoesNotExist
 # Create your views here.
 
 def isauth(request):
     username = request.POST.get("username")
     password = request.POST.get("password")
-    print(username,password)
     user = authenticate(request, username=username, password=password)
     if user is not None:
         login(request, user)
-        return JsonResponse({'status': "User authenticated"})
+        try:
+            instance = Score.objects.get(user=user)
+            return JsonResponse({'user':request.user.username,'carbon_count':instance.carbon_count,'score':instance.score})
+        except ObjectDoesNotExist:
+            instance = Score.objects.create(user=user)
+            instance.save()
+            return JsonResponse({'user':request.user.username,'carbon_count':instance.carbon_count,'score':instance.score})
     else:
         return JsonResponse({'error': "User not authenticated"})
 
@@ -25,7 +31,8 @@ def register_request(request):
         user = User.objects.create_user(userName, userMail, userPass)
         user.save()
         login(request, user)
-        return JsonResponse({'status': "Registration successful"})
+        instance = Score.objects.create(user=user)
+        return JsonResponse({'user':request.user.username,'carbon_count':instance.carbon_count,'score':instance.score})
     return JsonResponse({'status':"Unsuccessful registration. Invalid information."})
 
 def questionwithcategory(request,ctg):
