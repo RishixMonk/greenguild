@@ -1,11 +1,14 @@
 from django.shortcuts import render
 from api.models import Question
 from django.http import HttpResponse,StreamingHttpResponse,JsonResponse, request
+from django.contrib.auth import login, authenticate
+from django.contrib.auth.models import User
 # Create your views here.
 
 def isauth(request):
-    username = request.POST["username"]
-    password = request.POST["password"]
+    username = request.POST.get("username")
+    password = request.POST.get("password")
+    print(username,password)
     user = authenticate(request, username=username, password=password)
     if user is not None:
         login(request, user)
@@ -14,38 +17,41 @@ def isauth(request):
         return JsonResponse({'error': "User not authenticated"})
 
 def register_request(request):
-	if request.method == "POST":
-		form = NewUserForm(request.POST)
-		if form.is_valid():
-			user = form.save()
-			login(request, user)
-			return JsonResponse({'status': "Registration successful"})
-		return JsonResponse({'status':"Unsuccessful registration. Invalid information."})
+    if request.method == "POST":
+        userName = request.POST.get('username', None)
+        userPass = request.POST.get('password', None)
+        userMail = request.POST.get('email', None)
+        user = User.objects.create_user(userName, userMail, userPass)
+        user.save()
+        login(request, user)
+        return JsonResponse({'status': "Registration successful"})
+    return JsonResponse({'status':"Unsuccessful registration. Invalid information."})
 
 def questionwithcategory(request,ctg):
-    if request.user.is_authenticated:
-        try:
-            instances = Question.objects.filter(category=ctg)
-            data = {'questions': list(instances.values())}
-            return JsonResponse(data)
-        except:
-            return {}
-    else:
-        return JsonResponse({'error': "User not authenticated"})
+    # if request.user.is_authenticated:
+    try:
+        instances = Question.objects.filter(category=ctg)
+        data = {'questions': list(instances.values())}
+        return JsonResponse(data)
+    except:
+        return {}
+    # else:
+    #     return JsonResponse({'error': "User not authenticated"})
 
 def info_of_categories(request):
-    if request.user.is_authenticated:
-        try:
-            instances = Question.objects.values('category').distinct()
-            categories = [instance['category'] for instance in instances]
-            return JsonResponse({'categories': categories})
-        except:
-            return {}
-    else:
-        return JsonResponse({'error': "User not authenticated"})
+    # if request.user.is_authenticated:
+    try:
+        instances = Question.objects.values('category').distinct()
+        categories = [instance['category'] for instance in instances]
+        return JsonResponse({'categories': categories})
+    except:
+        return {}
+    # else:
+    #     return JsonResponse({'error': "User not authenticated"})
 
 def submit_data(request):
-    if request.user.is_authenticated & request.method == 'POST':
+    # if request.user.is_authenticated and request.method == 'POST':
+    if request.method == 'POST':
         try:
             form_data = dict(request.POST)
             question_data_map = {}
