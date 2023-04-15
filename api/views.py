@@ -5,9 +5,13 @@ from django.contrib.auth import login, authenticate
 from django.contrib.auth.models import User
 import math, json
 from django.core.exceptions import ObjectDoesNotExist
+from datetime import datetime
 # Create your views here.
 
 def isauth(request):
+    # form_data = json.loads(request.body)
+    # username = form_data.get("username")
+    # password = form_data.get("password")
     username = request.POST.get("username")
     password = request.POST.get("password")
     user = authenticate(request, username=username, password=password)
@@ -15,24 +19,30 @@ def isauth(request):
         login(request, user)
         try:
             instance = Score.objects.get(user=user)
-            return JsonResponse({'user':request.user.username,'carbon_count':instance.carbon_count,'score':instance.score})
+            user_instance = User.objects.get(username=request.user.username)
+            return JsonResponse({'username':request.user.username,'carbon_count':instance.carbon_count,'score':instance.score,'date':instance.date,'email':user_instance.email})
         except ObjectDoesNotExist:
             instance = Score.objects.create(user=user)
             instance.save()
-            return JsonResponse({'user':request.user.username,'carbon_count':instance.carbon_count,'score':instance.score})
+            user_instance = User.objects.get(username=request.user.username)
+            return JsonResponse({'username':request.user.username,'carbon_count':instance.carbon_count,'score':instance.score,'email':user_instance.email})
     else:
-        return JsonResponse({'error': "User not authenticated"})
+        return JsonResponse({'error': "User not authenticated","status_code":203})
 
 def register_request(request):
     if request.method == "POST":
         userName = request.POST.get('username', None)
-        userPass = request.POST.get('password', None)
-        userMail = request.POST.get('email', None)
-        user = User.objects.create_user(userName, userMail, userPass)
-        user.save()
-        login(request, user)
-        instance = Score.objects.create(user=user)
-        return JsonResponse({'user':request.user.username,'carbon_count':instance.carbon_count,'score':instance.score})
+        try:
+            instance = User.objects.get(username=userName)
+            return JsonResponse({'msg':"Username Already Exists", 'status_code':203})
+        except ObjectDoesNotExist:
+            userPass = request.POST.get('password', None)
+            userMail = request.POST.get('email', None)
+            user = User.objects.create_user(userName, userMail, userPass)
+            user.save()
+            login(request, user)
+            instance = Score.objects.create(user=user)
+            return JsonResponse({'user':request.user.username,'carbon_count':instance.carbon_count,'score':instance.score})
     return JsonResponse({'status':"Unsuccessful registration. Invalid information."})
 
 def questionwithcategory(request,ctg):
@@ -58,10 +68,11 @@ def info_of_categories(request):
     #     return JsonResponse({'error': "User not authenticated"})
 
 def submit_data(request):
-    # if request.user.is_authenticated and request.method == 'POST':
-    if request.method == 'POST':
+    if request.user.is_authenticated and request.method == 'POST':
+    # if request.method == 'POST':
         try:
-            form_data = json.loads(request.body)
+            # form_data = json.loads(request.body)
+            form_data = dict(request.POST)
             question_data_map = {}
             category_data_map = {}
             instances = list(Question.objects.all())
@@ -72,8 +83,8 @@ def submit_data(request):
                 category_data_map[str(question.id)] = question.category
             total_carbon_count = 0
             for key, val in form_data.items():
-                categories[category_data_map[key]]+=question_data_map[key] * float(val)
-                total_carbon_count+= question_data_map[key] * float(val)
+                categories[category_data_map[key]]+=question_data_map[key] * float(val[0])
+                total_carbon_count+= question_data_map[key] * float(val[0])
             total_score = int(total_carbon_count/10)
             commute_score = int(categories['Commute']/10)
             household_score = int(categories['Household']/10)
@@ -84,11 +95,30 @@ def submit_data(request):
                 "household_score": math.floor(household_score),
                 "food_score": math.floor(total_score) - (math.floor(commute_score) + math.floor(household_score))
             }
-            return JsonResponse({'total_carbon_count': total_carbon_count,"categories":categories,"scores":scores})
+            instance = Score.objects.get(user=request.user)
+            instance.score += total_score
+            instance.carbon_count = round(total_carbon_count,2)
+            instance.date = datetime.now()
+            instance.save()
+            return JsonResponse({'total_carbon_count': total_carbon_count,"categories":categories,"scores":scores,"date":str(instance.date)})
         except Exception as e:
-            return JsonResponse({'error': "Key Error"})
+            return JsonResponse({'error': str(e)})
     else:
         return JsonResponse({'error': "User not authenticated"})
+    
+
+def leaderboard(request):
+    # if request.user.is_authenticated:
+    try:
+        instances = Score.objects.all().order_by('-score')
+        data = {'leaderboard': list(instances.values())}
+        return JsonResponse(data)
+    except Exception as e:
+        return JsonResponse({'error':str(e)})
+    # else:
+        #     return JsonResponse({'error': "User not authenticated"})
+
+
 
 
 

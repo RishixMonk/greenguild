@@ -7,5 +7,6 @@ urlpatterns = [
     path('submit',views.submit_data),
     path('isauth',views.isauth),
     path('register_request',views.register_request),
+    path('leaderboard',views.leaderboard),
 ]
 
